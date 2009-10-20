@@ -92,7 +92,7 @@ sub _req {
 
     eval {
         $self->logger_dump->trace(
-            "<!-- result of mech request #$c (".$self->_dmp($args)."):\n".
+            "<!-- result of mech request #$c ($meth ".$self->_dmp($args)."):\n".
             $mech->response->status_line."\n".
             $mech->response->headers->as_string."\n".
             "-->\n".

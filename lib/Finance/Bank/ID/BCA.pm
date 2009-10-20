@@ -9,15 +9,15 @@ extends 'Finance::Bank::ID::Base';
 
 =head1 NAME
 
-Finance::Bank::ID::BCA - Check your BCA accounts with Perl
+Finance::Bank::ID::BCA - Check your BCA accounts from Perl
 
 =head1 VERSION
 
-Version 0.01
+Version 0.02
 
 =cut
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 
 =head1 SYNOPSIS
@@ -475,24 +475,24 @@ In list context, this method will return HTTP-style response instead:
 
  ($status, $err_details, $stmt)
 
-C<$status> is 200 if successful or some other 3-letter code if parsing failed.
+C<$status> is 200 if successful or some other 3-digit code if parsing failed.
 C<$stmt> is the result (structure as above, or undef if parsing failed).
 
 =cut
 
 sub _ps_detect {
     my ($self, $page) = @_;
-    unless ($page =~ /(?:^\s*|&nbsp;)INFORMASI REKENING - MUTASI REKENING/mi) {
+    unless ($page =~ /(?:^\s*|&nbsp;)(?:INFORMASI REKENING - MUTASI REKENING|ACCOUNT INFORMATION - ACCOUNT STATEMENT)/mi) {
         return "No KlikBCA statement page signature found";
     }
-    $self->_variant($page =~ /^Kode Mata Uang/m ? 'bisnis' : 'perorangan');
+    $self->_variant($page =~ /^(?:Kode Mata Uang|Currency)/m ? 'bisnis' : 'perorangan');
     "";
 }
 
 sub _ps_get_metadata {
     my ($self, $page, $stmt) = @_;
 
-    unless ($page =~ /\s*(?:Nomor|No\.) [Rr]ekening\s*(?:<[^>]+>\s*)*[:\t]\s*(?:<[^>]+>\s*)*([\d-]+)/m) {
+    unless ($page =~ /\s*(?:(?:Nomor|No\.) [Rr]ekening|Account Number)\s*(?:<[^>]+>\s*)*[:\t]\s*(?:<[^>]+>\s*)*([\d-]+)/m) {
         return "can't get account number";
     }
     $stmt->{account} = $self->_stripD($1);
@@ -500,29 +500,29 @@ sub _ps_get_metadata {
 
     my $adv1 = "probably the statement format changed, or input incomplete";
 
-    unless ($page =~ m!(?:^\s*|>)Periode\s*(?:<[^>]+>\s*)*[:\t]\s*(?:<[^>]+>\s*)*(\d\d)/(\d\d)/(\d\d\d\d) - (\d\d)/(\d\d)/(\d\d\d\d)!m) {
+    unless ($page =~ m!(?:^\s*|>)(?:Periode|Period)\s*(?:<[^>]+>\s*)*[:\t]\s*(?:<[^>]+>\s*)*(\d\d)/(\d\d)/(\d\d\d\d) - (\d\d)/(\d\d)/(\d\d\d\d)!m) {
         return "can't get statement period, $adv1";
     }
     $stmt->{start_date} = DateTime->new(day=>$1, month=>$2, year=>$3);
     $stmt->{end_date}   = DateTime->new(day=>$4, month=>$5, year=>$6);
 
-    unless ($page =~ /(?:^|>)(?:Kode )?Mata Uang\s*(?:<[^>]+>\s*)*[:\t]\s*(?:<[^>]+>\s*)*(Rp|[A-Z]+)/m) {
+    unless ($page =~ /(?:^|>)(?:(?:Kode )?Mata Uang|Currency)\s*(?:<[^>]+>\s*)*[:\t]\s*(?:<[^>]+>\s*)*(Rp|[A-Z]+)/m) {
         return "can't get currency, $adv1";
     }
     $stmt->{currency} = ($1 eq 'Rp' ? 'IDR' : $1);
     
-    unless ($page =~ /(?:^|>)Nama\s*(?:<[^>]+>\s*)*[:\t]\s*(?:<[^>]+>\s*)*([^<\015\012]+)/m) {
-        return "can't get total credit, $adv1";
+    unless ($page =~ /(?:^|>)(?:Nama|Name)\s*(?:<[^>]+>\s*)*[:\t]\s*(?:<[^>]+>\s*)*([^<\015\012]+)/m) {
+        return "can't get account holder, $adv1";
     }
     $stmt->{account_holder} = $1;
 
-    unless ($page =~ /(?:^|>)Mutasi Kredit\s*(?:<[^>]+>\s*)*[:\t]\s*(?:<[^>]+>\s*)*([0-9,.]+)\.(\d\d)(?:\s*\t\s*(\d+))?/m) {
+    unless ($page =~ /(?:^|>)(?:Mutasi Kredit|Total Credits)\s*(?:<[^>]+>\s*)*[:\t]\s*(?:<[^>]+>\s*)*([0-9,.]+)\.(\d\d)(?:\s*\t\s*(\d+))?/m) {
         return "can't get total credit, $adv1";
     }
     $stmt->{_total_credit_in_stmt}  = $self->_stripD($1) + 0.01*$2;
     $stmt->{_num_credit_tx_in_stmt} = $3 if $3;
 
-    unless ($page =~ /(?:^|>)Mutasi Debet\s*(?:<[^>]+>\s*)*[:\t]\s*(?:<[^>]+>\s*)*([0-9,.]+)\.(\d\d)(?:\s*\t\s*(\d+))?/m) {
+    unless ($page =~ /(?:^|>)(?:Mutasi Debet|Total Debits)\s*(?:<[^>]+>\s*)*[:\t]\s*(?:<[^>]+>\s*)*([0-9,.]+)\.(\d\d)(?:\s*\t\s*(\d+))?/m) {
         return "can't get total credit, $adv1";
     }
     $stmt->{_total_debit_in_stmt}  = $self->_stripD($1) + 0.01*$2;

@@ -1,7 +1,7 @@
 #!perl -Tw
 
 use strict;
-use Test::More tests => (1 + 3*15 + 1*15);
+use Test::More tests => (1 + 4*15 + 1*15);
 use DateTime;
 use File::Slurp;
 use FindBin '$Bin';
@@ -18,7 +18,9 @@ my $ibank = Finance::Bank::ID::BCA->new();
 for my $f (
     ["stmt1.html", "personal, html"],
     ["stmt1.opera10linux.txt", "personal, txt, opera10linux"],
-    ["stmt1.ff35linux.txt", "personal, txt, ff35linux"]) {
+    ["stmt1.ff35linux.txt", "personal, txt, ff35linux"],
+    ["stmt1-en.opera10linux.txt", "personal (en), txt, opera10linux"],
+) {
     my ($status, $error, $stmt) = $ibank->parse_statement(scalar read_file("$Bin/data/$f->[0]"));
     #print "status=$status, error=$error\n";
 

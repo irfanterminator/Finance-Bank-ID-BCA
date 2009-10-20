@@ -1,4 +1,8 @@
 Revision history for Finance-Bank-ID-BCA
 
+0.02    2009-10-20
+        - Now also parses the English version of KlikBCA Personal.
+        - A few minor fixes.
+
 0.01    2009-10-14
         First release.
