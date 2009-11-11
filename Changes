@@ -1,5 +1,10 @@
 Revision history for Finance-Bank-ID-BCA
 
+0.03    2009-11-11
+        - Now also parses copy-pasted text from Chrome (4.0 Linux) for KlikBCA
+          Personal.
+        - BIAYA ADM is also possible outside Mon-Fri for Personal accounts.
+
 0.02    2009-10-20
         - Now also parses the English version of KlikBCA Personal.
         - A few minor fixes.

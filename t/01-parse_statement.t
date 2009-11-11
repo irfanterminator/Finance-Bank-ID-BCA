@@ -1,7 +1,7 @@
 #!perl -Tw
 
 use strict;
-use Test::More tests => (1 + 4*15 + 1*15);
+use Test::More tests => (1 + 4*15 + 1*15 + 1*15);
 use DateTime;
 use File::Slurp;
 use FindBin '$Bin';
@@ -22,7 +22,7 @@ for my $f (
     ["stmt1-en.opera10linux.txt", "personal (en), txt, opera10linux"],
 ) {
     my ($status, $error, $stmt) = $ibank->parse_statement(scalar read_file("$Bin/data/$f->[0]"));
-    #print "status=$status, error=$error\n";
+    die "status=$status, error=$error\n" if $status != 200;
 
     # metadata
     is($stmt->{account}, "1234567890", "$f->[1] (account)");
@@ -53,9 +53,43 @@ for my $f (
 }
 
 for my $f (
+    ["stmt1b.chrome4linux.txt", "personal, txt, chrome4linux"],
+) {
+    my ($status, $error, $stmt) = $ibank->parse_statement(scalar read_file("$Bin/data/$f->[0]"));
+    die "status=$status, error=$error\n" if $status != 200;
+
+    # metadata
+    is($stmt->{account}, "1234567890", "$f->[1] (account)");
+    is($stmt->{account_holder}, "STEVEN HARYANTO", "$f->[1] (account_holder)");
+    is(DateTime->compare($stmt->{start_date},
+                         DateTime->new(year=>2009, month=>10, day=>31)),
+       0, "$f->[1] (start_date)");
+    is(DateTime->compare($stmt->{end_date},
+                         DateTime->new(year=>2009, month=>11, day=>2)),
+       0, "$f->[1] (end_date)");
+    is($stmt->{currency}, "IDR", "$f->[1] (currency)");
+
+    # transactions
+    is(scalar(@{ $stmt->{transactions} }), 5, "$f->[1] (num tx)");
+    is(DateTime->compare($stmt->{transactions}[0]{date},
+                         DateTime->new(year=>2009, month=>10, day=>31)),
+       0, "$f->[1] (tx0 date)");
+    is($stmt->{transactions}[0]{branch}, "0000", "$f->[1] (tx0 branch)");
+    is($stmt->{transactions}[0]{amount}, -10000, "$f->[1] (tx0 amount)");
+    is($stmt->{transactions}[0]{balance}, 28560526.20, "$f->[1] (tx0 balance)");
+    is($stmt->{transactions}[0]{is_pending}, 0, "$f->[1] (tx0 is_pending)");
+    is($stmt->{transactions}[0]{seq}, 1, "$f->[1] (tx0 seq)");
+
+    is($stmt->{transactions}[1]{amount}, 39.42, "$f->[1] (credit)");
+
+    is($stmt->{transactions}[1]{seq}, 2, "$f->[1] (seq 1)");
+    is($stmt->{transactions}[4]{seq}, 1, "$f->[1] (seq 2)");
+}
+
+for my $f (
     ["stmt2.txt", "bisnis, txt"],) {
     my ($status, $error, $stmt) = $ibank->parse_statement(scalar read_file("$Bin/data/$f->[0]"));
-    #print "status=$status, error=$error\n";
+    die "status=$status, error=$error\n" if $status != 200;
 
     # metadata
     is($stmt->{account}, "1234567890", "$f->[1] (account)");
