@@ -1,0 +1,18 @@
+---
+abstract: 'Check your BCA accounts from Perl'
+author:
+  - 'Steven Haryanto <stevenharyanto@gmail.com>'
+generated_by: 'Dist::Zilla version 1.093000'
+license: perl
+meta-spec:
+  url: http://module-build.sourceforge.net/META-spec-v1.4.html
+  version: 1.4
+name: Finance-Bank-ID-BCA
+requires:
+  DateTime: 0
+  File::Slurp: 0
+  Log::Log4perl: 0
+  Moose: 0
+  Test::More: 0
+  WWW::Mechanize: 0
+version: 0.04

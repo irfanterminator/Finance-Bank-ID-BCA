@@ -1,5 +1,8 @@
 Revision history for Finance-Bank-ID-BCA
 
+0.04    2009-11-26
+        - handle float round-off error on matching total credit vs debit
+        
 0.03    2009-11-11
         - Now also parses copy-pasted text from Chrome (4.0 Linux) for KlikBCA
           Personal.

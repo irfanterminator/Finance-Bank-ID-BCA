@@ -1,29 +1,16 @@
 package Finance::Bank::ID::Base;
+our $VERSION = '0.04';
 
-use warnings;
-use strict;
+
+# ABSTRACT: Base class for Finance::Bank::ID::BCA etc
+
+
+use Moose;
 use Data::Dumper;
 use DateTime;
 use Log::Log4perl;
-use Moose;
 use WWW::Mechanize;
 
-=head1 NAME
-
-Finance::Bank::ID::Base - Base class for Finance::Bank::ID::BCA etc
-
-=head1 SYNOPSIS
-
-    # Don't use this module directly, use one of its subclasses instead.
-
-=head1 DESCRIPTION
-
-This module provides a base implementation for L<Finance::Bank::ID::BCA> and
-L<Finance::Bank::ID::Mandiri>.
-
-=head1 ATTRIBUTES
-
-=cut
 
 has mech        => (is => 'rw');
 has username    => (is => 'rw');
@@ -39,9 +26,6 @@ has site => (is => 'rw');
 
 has _req_counter => (is => 'rw', default => 0);
 
-=head1 METHODS
-
-=cut
 
 sub _fmtdate {
     my ($self, $dt) = @_;
@@ -60,11 +44,6 @@ sub _stripD {
     $s;
 }
 
-=head2 new(%args)
-
-Create a new instance.
-
-=cut
 
 sub BUILD {
     my ($self, $args) = @_;
@@ -118,83 +97,40 @@ sub _req {
     }
 }
 
-=head2 login()
-
-Login to netbanking site.
-
-=cut
 
 sub login {
     die "Should be implemented by child";
 }
 
-=head2 logout()
-
-Logout from netbanking site.
-
-=cut
 
 sub logout {
     die "Should be implemented by child";
 }
 
-=head2 list_accounts()
-
-List accounts.
-
-=cut
 
 sub list_accounts {
     die "Should be implemented by child";
 }
 
-=head2 check_balance([$acct])
-
-=cut
 
 sub check_balance {
     die "Should be implemented by child";
 }
 
-=head2 get_balance
-
-Synonym for check_balance.
-
-=cut
 
 sub get_balance { check_balance(@_) }
 
-=head2 get_statement(%args)
-
-Get account statement.
-
-=cut
 
 sub get_statement {
     die "Should be implemented by child";
 }
 
-=head2 check_statement
-
-Alias for get_statement
-
-=cut
 
 sub check_statement { get_statement(@_) }
 
-=head2 account_statement
-
-Alias for get_statement
-
-=cut
 
 sub account_statement { get_statement(@_) }
 
-=head2 parse_statement($html_or_text, %opts)
-
-Parse HTML/text into statement data.
-
-=cut
 
 sub parse_statement {
     my ($self, $page, %opts) = @_;
@@ -213,15 +149,15 @@ sub parse_statement {
         if ($err = $self->_ps_get_transactions($page, $stmt)) {
             $status = 400; $error = "Can't get transactions: $err"; last;
         }
-        
+
         if (defined($stmt->{_total_debit_in_stmt})) {
             my $na = $stmt->{_total_debit_in_stmt}; 
             my $nb = 0;
             for (@{ $stmt->{transactions} }) { 
                 $nb += $_->{amount} < 0 ? -$_->{amount} : 0;
             }
-            if ($na != $nb) {
-                $status = 400; 
+            if (abs($na-$nb) >= 0.01) {
+                $status = 400;
                 $error = "Check failed: total debit do not match ($na vs $nb)";
                 last;
             }
@@ -232,7 +168,7 @@ sub parse_statement {
             for (@{ $stmt->{transactions} }) { 
                 $nb += $_->{amount} > 0 ? $_->{amount} : 0;
             }
-            if ($na != $nb) {
+            if (abs($na-$nb) >= 0.01) {
                 $status = 400; 
                 $error = "Check failed: total credit do not match ($na vs $nb)";
                 last;
@@ -278,22 +214,82 @@ sub parse_statement {
     wantarray ? ($status, $error, $stmt) : $stmt;
 }
 
+__PACKAGE__->meta->make_immutable;
+no Moose;
+1;
+
+__END__
+=pod
+
+=head1 NAME
+
+Finance::Bank::ID::Base - Base class for Finance::Bank::ID::BCA etc
+
+=head1 VERSION
+
+version 0.04
+
+=head1 SYNOPSIS
+
+    # Don't use this module directly, use one of its subclasses instead.
+
+=head1 DESCRIPTION
+
+This module provides a base implementation for L<Finance::Bank::ID::BCA> and
+L<Finance::Bank::ID::Mandiri>.
+
+=head1 ATTRIBUTES
+
+=head1 METHODS
+
+=head2 new(%args)
+
+Create a new instance.
+
+=head2 login()
+
+Login to netbanking site.
+
+=head2 logout()
+
+Logout from netbanking site.
+
+=head2 list_accounts()
+
+List accounts.
+
+=head2 check_balance([$acct])
+
+=head2 get_balance
+
+Synonym for check_balance.
+
+=head2 get_statement(%args)
+
+Get account statement.
+
+=head2 check_statement
+
+Alias for get_statement
+
+=head2 account_statement
+
+Alias for get_statement
+
+=head2 parse_statement($html_or_text, %opts)
+
+Parse HTML/text into statement data.
+
 =head1 AUTHOR
 
-Steven Haryanto, C<< <stevenharyanto at gmail.com> >>
+  Steven Haryanto <stevenharyanto@gmail.com>
 
-=head1 COPYRIGHT & LICENSE
+=head1 COPYRIGHT AND LICENSE
 
-Copyright 2009 Steven Haryanto.
+This software is copyright (c) 2009 by Steven Haryanto.
 
-This program is free software; you can redistribute it and/or modify it
-under the terms of either: the GNU General Public License as published
-by the Free Software Foundation; or the Artistic License.
-
-See http://dev.perl.org/licenses/ for more information.
-
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
 
 =cut
 
-__PACKAGE__->meta->make_immutable;
-1;

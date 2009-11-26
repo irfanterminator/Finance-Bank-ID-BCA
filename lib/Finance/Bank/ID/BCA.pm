@@ -1,164 +1,19 @@
 package Finance::Bank::ID::BCA;
+our $VERSION = '0.04';
 
-use warnings;
-use strict;
-use DateTime;
+
+# ABSTRACT: Check your BCA accounts from Perl
+
+
 use Moose;
+use DateTime;
 
 extends 'Finance::Bank::ID::Base';
 
-=head1 NAME
-
-Finance::Bank::ID::BCA - Check your BCA accounts from Perl
-
-=head1 VERSION
-
-Version 0.03
-
-=cut
-
-our $VERSION = '0.03';
-
-
-=head1 SYNOPSIS
-
-    use Finance::Bank::ID::BCA;
-
-    # FBI::BCA uses Log4perl. the easiest way to show logs is with these 2 lines:
-    use Log::Log4perl qw(:easy);
-    Log::Log4perl->easy_init($DEBUG);
-
-    my $ibank = Finance::Bank::ID::BCA->new(
-        username => 'ABCDEFGH1234', # optional if you're only using parse_statement()
-        password => '123456',       # idem
-    );
-
-    eval {
-        $ibank->login(); # dies on error
-
-        my @accts = $ibank->list_accounts();
-
-        my $bal = $ibank->check_balance($acct); # $acct is optional
-
-        my $stmt = $ibank->get_statement(
-            account    => ..., # opt, default account will be used if not specified
-            days       => 31,  # opt
-            start_date => DateTime->new(year=>2009, month=>10, day=>6),
-                               # opt, takes precedence over 'days'
-            end_date   => DateTime->today, # opt, takes precedence over 'days'
-        );
-
-        print "Transactions: ";
-        for my $tx (@{ $stmt->{transactions} }) {
-            print "$tx->{date} $tx->{amount} $tx->{description}\n";
-        }
-    };
-
-    # remember to call this, otherwise you will have trouble logging in again
-    # for some time
-    if ($ibank->logged_in) { $ibank->logout() }
-
-    # utility routines
-    my $stmt = $ibank->parse_statement($html_or_copy_pasted_text);
-
-Also see the examples/ subdirectory in the distribution for a sample script using
-this module.
-
-=head1 DESCRIPTION
-
-This module provide a rudimentary interface to the web-based online banking
-interface of the Indonesian B<Bank Central Asia> (BCA) at
-https://ibank.klikbca.com. You will need either L<Crypt::SSLeay> or
-L<IO::Socket::SSL> installed for HTTPS support to work. L<WWW::Mechanize> is
-required but you can supply your own mech-like object.
-
-This module can only login to the retail/personal version of the site (KlikBCA
-perorangan) and not the corporate/business version (KlikBCA bisnis) as the later
-requires VPN and token input on login. But this module can parse statement page
-from both versions.
-
-Warning: This module is neither offical nor is it tested to be 100% save!
-Because of the nature of web-robots, everything may break from one day to the
-other when the underlying web interface changes.
-
-=head1 WARNING
-
-This warning is from Simon Cozens' C<Finance::Bank::LloydsTSB>, and seems just
-as apt here.
-
-This is code for B<online banking>, and that means B<your money>, and that means
-B<BE CAREFUL>. You are encouraged, nay, expected, to audit the source of this
-module yourself to reassure yourself that I am not doing anything untoward with
-your banking data. This software is useful to me, but is provided under B<NO
-GUARANTEE>, explicit or implied.
-
-=head1 ERROR HANDLING AND DEBUGGING
-
-Most methods die() when encountering errors, so you can use eval() to trap them.
-
-This module uses Log::Log4perl, so you can see more debugging statements on
-your screen, log files, etc.
-
-Full response headers and bodies are dumped to a separate logger. See
-documentation on C<new()> below and the sample script in examples/ subdirectory
-in the distribution.
-
-=head1 ATTRIBUTES
-
-=cut
 
 has _variant => (is => 'rw'); # bisnis or perorangan
 
-=head1 METHODS
 
-=cut
-
-=head2 new(%args)
-
-Create a new instance. %args keys:
-
-=over
-
-=item * username
-
-Optional if you are just using utility methods like C<parse_statement()> and not
-C<login()> etc.
-
-=item * password
-
-Optional if you are just using utility methods like C<parse_statement()> and not
-C<login()> etc.
-
-=item * mech
-
-Optional. A L<WWW::Mechanize>-like object. By default this module instantiate a
-new WWW::Mechanize object to retrieve web pages, but if you want to use a
-custom/different one, you are allowed to do so here. Use cases include: you want
-to retry and increase timeout due to slow/unreliable network connection (using
-L<WWW::Mechanize::Plugin::Retry>), you want to slow things down using
-L<WWW::Mechanize::Sleepy>, you want to use IE engine using
-L<Win32::IE::Mechanize>, etc.
-
-=item * logger
-
-Optional. You can supply a L<Log::Log4perl>-like logger object here. If not
-specified, this module will use a default logger
-(C<Log::Log4perl->get_logger()>).
-
-=item * logger_dump
-
-Optional. You can supply a L<Log::Log4perl>-like logger object here. This is
-just like C<logger> but this module will log contents of response here
-instead of to C<logger_dump> for debugging purposes. You can configure
-Log4perl with something like L<Log::Dispatch::Dir> to save web pages more
-conveniently as separate files. If unspecified, the default logger is used:
-C<Log::Log4perl->get_logger()>.
-
-Note that response contents are logged using the TRACE level.
-
-=back
-
-=cut
 
 sub BUILD {
     my ($self, $args) = @_;
@@ -166,18 +21,6 @@ sub BUILD {
     $self->site("https://ibank.klikbca.com") unless $self->site;
 }
 
-=head2 login()
-
-Login to the net banking site. You actually do not have to do this explicitly as
-login() is called by other methods like C<check_balance()> or
-C<get_statement()>.
-
-If login is successful, C<logged_in> will be set to true and subsequent calls to
-C<login()> will become a no-op until C<logout()> is called.
-
-Dies on failure.
-
-=cut
 
 sub login {
     my ($self) = @_;
@@ -208,18 +51,6 @@ sub login {
     #$self->_req(get => ["$s/nav_bar_indo/menu_nav.htm"]); # failed?
 }
 
-=head2 logout()
-
-Logout from the net banking site. You need to call this at the end of your
-program, otherwise the site will prevent you from re-logging in for some time
-(e.g. 10 minutes).
-
-If logout is successful, C<logged_in> will be set to false and subsequent calls
-to C<logout()> will become a no-op until C<login()> is called.
-
-Dies on failure.
-
-=cut
 
 sub logout {
     my ($self) = @_;
@@ -236,12 +67,6 @@ sub _menu {
     $self->_req(get => ["$s/nav_bar_indo/account_information_menu.htm"]);
 }
 
-=head2 list_accounts()
-
-Return an array containing all account numbers that are associated with the
-current net banking login.
-
-=cut
 
 sub list_accounts {
     my ($self) = @_;
@@ -285,12 +110,6 @@ sub _check_balances {
     @res;
 }
 
-=head2 check_balance([$account])
-
-Return balance for specified account, or the default account if C<$account> is
-not specified.
-
-=cut
 
 sub check_balance {
     my ($self, $account) = @_;
@@ -303,34 +122,6 @@ sub check_balance {
     return;
 }
 
-=head2 get_statement(%args)
-
-Get account statement. %args keys:
-
-=over
-
-=item * account
-
-Optional. Select the account to get statement of. If not specified, will use the
-already selected account.
-
-=item * days
-
-Optional. Number of days between 1 and 31. If days is 1, then start date and end
-date will be the same. Default is 31.
-
-=item * start_date
-
-Optional. Default is end_date - days.
-
-=item * end_date
-
-Optional. Default is today (or some 1+ days from today if today is a
-Saturday/Sunday/holiday, depending on the default value set by the site's form).
-
-=back
-
-=cut
 
 sub get_statement {
     my ($self, %args) = @_;
@@ -442,43 +233,6 @@ sub get_statement {
     $stmt;
 }
 
-=head2 parse_statement($html_or_text, %opts)
-
-Given the HTML/copy-pasted text of the account statement results page, parse it
-into structured data:
-
- $stmt = {
-    start_date     => $start_dt, # a DateTime object
-    end_date       => $end_dt,   # a DateTime object
-    account_holder => STRING,
-    account        => STRING,    # account number
-    currency       => STRING,    # 3-digit currency code
-    transactions   => [
-        # first transaction
-        {
-          date        => $dt, # a DateTime object, book date ("tanggal pembukuan")
-          seq         => INT, # a number >= 1 which marks the sequence of transactions for the day
-          amount      => REAL, # a real number, positive means credit (deposit), negative means debit (withdrawal)
-          description => STRING,
-          is_pending  => BOOL,
-          branch      => STRING, # a 4-digit branch/ATM code
-          balance     => REAL,
-        },
-        # second transaction
-        ...
-    ]
- }
-
-If parsing failed, will return undef.
-
-In list context, this method will return HTTP-style response instead:
-
- ($status, $err_details, $stmt)
-
-C<$status> is 200 if successful or some other 3-digit code if parsing failed.
-C<$stmt> is the result (structure as above, or undef if parsing failed).
-
-=cut
 
 sub _ps_detect {
     my ($self, $page) = @_;
@@ -634,64 +388,258 @@ sub _ps_get_transactions {
     "";
 }
 
-=head1 AUTHOR
+__PACKAGE__->meta->make_immutable;
+no Moose;
+1;
 
-Steven Haryanto, C<< <stevenharyanto at gmail.com> >>
+__END__
+=pod
 
-=head1 BUGS
+=head1 NAME
 
-Please report any bugs or feature requests to C<bug-finance-bank-id-bca at rt.cpan.org>, or through
-the web interface at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Finance-Bank-ID-BCA>.  I will be notified, and then you'll
-automatically be notified of progress on your bug as I make changes.
+Finance::Bank::ID::BCA - Check your BCA accounts from Perl
 
+=head1 VERSION
 
+version 0.04
 
+=head1 SYNOPSIS
 
-=head1 SUPPORT
+    use Finance::Bank::ID::BCA;
 
-You can find documentation for this module with the perldoc command.
+    # FBI::BCA uses Log4perl. the easiest way to show logs is with these 2 lines:
+    use Log::Log4perl qw(:easy);
+    Log::Log4perl->easy_init($DEBUG);
 
-    perldoc Finance::Bank::ID::BCA
+    my $ibank = Finance::Bank::ID::BCA->new(
+        username => 'ABCDEFGH1234', # optional if you're only using parse_statement()
+        password => '123456',       # idem
+    );
 
+    eval {
+        $ibank->login(); # dies on error
 
-You can also look for information at:
+        my @accts = $ibank->list_accounts();
 
-=over 4
+        my $bal = $ibank->check_balance($acct); # $acct is optional
 
-=item * RT: CPAN's request tracker
+        my $stmt = $ibank->get_statement(
+            account    => ..., # opt, default account will be used if not specified
+            days       => 31,  # opt
+            start_date => DateTime->new(year=>2009, month=>10, day=>6),
+                               # opt, takes precedence over 'days'
+            end_date   => DateTime->today, # opt, takes precedence over 'days'
+        );
 
-L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=Finance-Bank-ID-BCA>
+        print "Transactions: ";
+        for my $tx (@{ $stmt->{transactions} }) {
+            print "$tx->{date} $tx->{amount} $tx->{description}\n";
+        }
+    };
 
-=item * AnnoCPAN: Annotated CPAN documentation
+    # remember to call this, otherwise you will have trouble logging in again
+    # for some time
+    if ($ibank->logged_in) { $ibank->logout() }
 
-L<http://annocpan.org/dist/Finance-Bank-ID-BCA>
+    # utility routines
+    my $stmt = $ibank->parse_statement($html_or_copy_pasted_text);
 
-=item * CPAN Ratings
+Also see the examples/ subdirectory in the distribution for a sample script using
+this module.
 
-L<http://cpanratings.perl.org/d/Finance-Bank-ID-BCA>
+=head1 DESCRIPTION
 
-=item * Search CPAN
+This module provide a rudimentary interface to the web-based online banking
+interface of the Indonesian B<Bank Central Asia> (BCA) at
+https://ibank.klikbca.com. You will need either L<Crypt::SSLeay> or
+L<IO::Socket::SSL> installed for HTTPS support to work. L<WWW::Mechanize> is
+required but you can supply your own mech-like object.
 
-L<http://search.cpan.org/dist/Finance-Bank-ID-BCA/>
+This module can only login to the retail/personal version of the site (KlikBCA
+perorangan) and not the corporate/business version (KlikBCA bisnis) as the later
+requires VPN and token input on login. But this module can parse statement page
+from both versions.
+
+Warning: This module is neither offical nor is it tested to be 100% save!
+Because of the nature of web-robots, everything may break from one day to the
+other when the underlying web interface changes.
+
+=head1 WARNING
+
+This warning is from Simon Cozens' C<Finance::Bank::LloydsTSB>, and seems just
+as apt here.
+
+This is code for B<online banking>, and that means B<your money>, and that means
+B<BE CAREFUL>. You are encouraged, nay, expected, to audit the source of this
+module yourself to reassure yourself that I am not doing anything untoward with
+your banking data. This software is useful to me, but is provided under B<NO
+GUARANTEE>, explicit or implied.
+
+=head1 ERROR HANDLING AND DEBUGGING
+
+Most methods die() when encountering errors, so you can use eval() to trap them.
+
+This module uses Log::Log4perl, so you can see more debugging statements on
+your screen, log files, etc.
+
+Full response headers and bodies are dumped to a separate logger. See
+documentation on C<new()> below and the sample script in examples/ subdirectory
+in the distribution.
+
+=head1 ATTRIBUTES
+
+=head1 METHODS
+
+=head2 new(%args)
+
+Create a new instance. %args keys:
+
+=over
+
+=item * username
+
+Optional if you are just using utility methods like C<parse_statement()> and not
+C<login()> etc.
+
+=item * password
+
+Optional if you are just using utility methods like C<parse_statement()> and not
+C<login()> etc.
+
+=item * mech
+
+Optional. A L<WWW::Mechanize>-like object. By default this module instantiate a
+new WWW::Mechanize object to retrieve web pages, but if you want to use a
+custom/different one, you are allowed to do so here. Use cases include: you want
+to retry and increase timeout due to slow/unreliable network connection (using
+L<WWW::Mechanize::Plugin::Retry>), you want to slow things down using
+L<WWW::Mechanize::Sleepy>, you want to use IE engine using
+L<Win32::IE::Mechanize>, etc.
+
+=item * logger
+
+Optional. You can supply a L<Log::Log4perl>-like logger object here. If not
+specified, this module will use a default logger
+(C<Log::Log4perl->get_logger()>).
+
+=item * logger_dump
+
+Optional. You can supply a L<Log::Log4perl>-like logger object here. This is
+just like C<logger> but this module will log contents of response here
+instead of to C<logger_dump> for debugging purposes. You can configure
+Log4perl with something like L<Log::Dispatch::Dir> to save web pages more
+conveniently as separate files. If unspecified, the default logger is used:
+C<Log::Log4perl->get_logger()>.
+
+Note that response contents are logged using the TRACE level.
 
 =back
 
+=head2 login()
 
-=head1 ACKNOWLEDGEMENTS
+Login to the net banking site. You actually do not have to do this explicitly as
+login() is called by other methods like C<check_balance()> or
+C<get_statement()>.
 
+If login is successful, C<logged_in> will be set to true and subsequent calls to
+C<login()> will become a no-op until C<logout()> is called.
 
-=head1 COPYRIGHT & LICENSE
+Dies on failure.
 
-Copyright 2009 Steven Haryanto.
+=head2 logout()
 
-This program is free software; you can redistribute it and/or modify it
-under the terms of either: the GNU General Public License as published
-by the Free Software Foundation; or the Artistic License.
+Logout from the net banking site. You need to call this at the end of your
+program, otherwise the site will prevent you from re-logging in for some time
+(e.g. 10 minutes).
 
-See http://dev.perl.org/licenses/ for more information.
+If logout is successful, C<logged_in> will be set to false and subsequent calls
+to C<logout()> will become a no-op until C<login()> is called.
 
+Dies on failure.
+
+=head2 list_accounts()
+
+Return an array containing all account numbers that are associated with the
+current net banking login.
+
+=head2 check_balance([$account])
+
+Return balance for specified account, or the default account if C<$account> is
+not specified.
+
+=head2 get_statement(%args)
+
+Get account statement. %args keys:
+
+=over
+
+=item * account
+
+Optional. Select the account to get statement of. If not specified, will use the
+already selected account.
+
+=item * days
+
+Optional. Number of days between 1 and 31. If days is 1, then start date and end
+date will be the same. Default is 31.
+
+=item * start_date
+
+Optional. Default is end_date - days.
+
+=item * end_date
+
+Optional. Default is today (or some 1+ days from today if today is a
+Saturday/Sunday/holiday, depending on the default value set by the site's form).
+
+=back
+
+=head2 parse_statement($html_or_text, %opts)
+
+Given the HTML/copy-pasted text of the account statement results page, parse it
+into structured data:
+
+ $stmt = {
+    start_date     => $start_dt, # a DateTime object
+    end_date       => $end_dt,   # a DateTime object
+    account_holder => STRING,
+    account        => STRING,    # account number
+    currency       => STRING,    # 3-digit currency code
+    transactions   => [
+        # first transaction
+        {
+          date        => $dt, # a DateTime object, book date ("tanggal pembukuan")
+          seq         => INT, # a number >= 1 which marks the sequence of transactions for the day
+          amount      => REAL, # a real number, positive means credit (deposit), negative means debit (withdrawal)
+          description => STRING,
+          is_pending  => BOOL,
+          branch      => STRING, # a 4-digit branch/ATM code
+          balance     => REAL,
+        },
+        # second transaction
+        ...
+    ]
+ }
+
+If parsing failed, will return undef.
+
+In list context, this method will return HTTP-style response instead:
+
+ ($status, $err_details, $stmt)
+
+C<$status> is 200 if successful or some other 3-digit code if parsing failed.
+C<$stmt> is the result (structure as above, or undef if parsing failed).
+
+=head1 AUTHOR
+
+  Steven Haryanto <stevenharyanto@gmail.com>
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is copyright (c) 2009 by Steven Haryanto.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
 
 =cut
 
-__PACKAGE__->meta->make_immutable;
-1;

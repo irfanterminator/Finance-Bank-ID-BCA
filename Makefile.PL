@@ -1,19 +1,25 @@
-use inc::Module::Install;
 
-name     'Finance-Bank-ID-BCA';
-all_from 'lib/Finance/Bank/ID/BCA.pm';
-author   'Steven Haryanto <stevenharyanto@gmail.com>';
-license  'perl';
+use strict;
+use warnings;
 
-build_requires 'Test::More';
+use ExtUtils::MakeMaker;
 
-test_requires 'File::Slurp';
+WriteMakefile(
+  DISTNAME  => 'Finance-Bank-ID-BCA',
+  NAME      => 'Finance::Bank::ID::BCA',
+  AUTHOR    => "Steven\ Haryanto\ \<stevenharyanto\@gmail\.com\>",
+  ABSTRACT  => "Check\ your\ BCA\ accounts\ from\ Perl",
+  VERSION   => '0.04',
+  EXE_FILES => [ qw() ],
+  (eval { ExtUtils::MakeMaker->VERSION(6.31) } ? (LICENSE => 'perl') : ()),
+  PREREQ_PM    => {
+    "Test::More" => '0',
+    "DateTime" => '0',
+    "WWW::Mechanize" => '0',
+    "File::Slurp" => '0',
+    "Log::Log4perl" => '0',
+    "Moose" => '0',
+  },
+  test => {TESTS => 't/*.t'}
+);
 
-requires 'DateTime';
-requires 'Log::Log4perl';
-requires 'Moose';
-requires 'WWW::Mechanize';
-
-auto_install;
-
-WriteAll;

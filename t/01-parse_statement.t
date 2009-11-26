@@ -1,7 +1,7 @@
 #!perl -Tw
 
 use strict;
-use Test::More tests => (1 + 4*15 + 1*15 + 1*15);
+use Test::More tests => (4*15 + 1*15 + 1*15);
 use DateTime;
 use File::Slurp;
 use FindBin '$Bin';
@@ -9,9 +9,7 @@ use Log::Log4perl qw(:easy);
 
 Log::Log4perl->easy_init($ERROR);
 
-BEGIN {
-    use_ok('Finance::Bank::ID::BCA');
-}
+use Finance::Bank::ID::BCA;
 
 my $ibank = Finance::Bank::ID::BCA->new();
 
